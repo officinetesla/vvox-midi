@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html><head><title>VVOX</title>
-<script src="https://cdn.jsdelivr.net/npm/webmidi"></script>
-<script src="https://cdn.jsdelivr.net/gh/zschuessler/DeltaE/dist/deltae.global.min.js"></script>
+<script src="webmidi.js"></script>
+<script src="deltae.global.min.js"></script>
+<script src="MIDI.min.js"></script>
 <script>
-window.app={rp:false,tween1:true,tuned:4186.01,fps:2,deltaE:40,cutoff:60,g1w:128,g1h:6,g2w:64,g2h:64};
+window.app={rp:false,tween1:true,tuned:4186.01,fps:8,deltaE:50,cutoff:60,g1w:128,g1h:6,g2w:80,g2h:80};
 app.noteONGRID=[
 	['C4',	'D4',	'E4',	'G4',	'A4',	'C5',	'D5',	'C5',	'A4',	'G4',	'E4',	'D4',	'C4'],
 	['A3',	'C4',	'D4',	'E4',	'G4',	'A4',	'C5',	'A4',	'G4',	'E4',	'D4',	'C4',	'A3'],
@@ -18,25 +19,25 @@ app.noteONGRID=[
 	['C2',	'D2',  'E2',	'G2',	'A2',	'C3',	'D3',	'C3',	'A2',	'G2',	'E2',	'D2',	'C2'],
 	['A1',	'C2',	'D2',  'E2',	'G2',	'A2',	'C3',	'A2',	'G2',	'E2',	'D2',	'C2',	'A1'],
 	['G1',	'A1',	'C2',	'D2',  'E2',	'G2',	'A2',	'G2',	'E2',	'D2',	'C2',	'A1',	'G1']
-];
-app.GRIDW=13;app.GRIDH=13;
+];app.GRIDW=13;app.GRIDH=13;
 /*GENERIC FUNCTIONS*/
 navigator.getUserMedia=navigator.getUserMedia||navigator.webkitGetUserMedia||navigator.mozGetUserMedia||navigator.msGetUserMedia;
-window.rgb2lab=function(rgb){
-  let r = rgb[0] / 255, g = rgb[1] / 255, b = rgb[2] / 255, x, y, z;
-  r = (r > 0.04045) ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
-  g = (g > 0.04045) ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
-  b = (b > 0.04045) ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
-  x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
-  y = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 1.00000;
-  z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
-  x = (x > 0.008856) ? Math.pow(x, 1/3) : (7.787 * x) + 16/116;
-  y = (y > 0.008856) ? Math.pow(y, 1/3) : (7.787 * y) + 16/116;
-  z = (z > 0.008856) ? Math.pow(z, 1/3) : (7.787 * z) + 16/116;
-  return [(116 * y) - 16, 500 * (x - y), 200 * (y - z)]
+window.rgb2lab=function(rgb){let r=rgb[0]/255, g=rgb[1]/255, b=rgb[2]/255, x, y, z;
+  r=(r>0.04045)? Math.pow((r+0.055)/1.055,2.4):r/12.92;g=(g>0.04045)? Math.pow((g+0.055)/1.055,2.4):g/12.92;b=(b>0.04045)? Math.pow((b+0.055)/1.055,2.4):b/12.92;
+  x=(r*0.4124+g*0.3576+b*0.1805)/0.95047;y=(r*0.2126+g*0.7152+b*0.0722)/1.00000;z=(r*0.0193+g*0.1192+b*0.9505)/1.08883;
+  x=(x>0.008856)? Math.pow(x,1/3):(7.787*x)+16/116;y=(y>0.008856)? Math.pow(y,1/3):(7.787*y)+16/116;z=(z>0.008856)? Math.pow(z,1/3):(7.787*z)+16/116;
+  return[(116 * y)- 16, 500 * (x - y), 200 * (y - z)]
 };
+/*app.dE={'red':	function(labT,c){return c[0]-((c[1]+c[2])/2);},
+		'green':function(labT,c){return c[1]-((c[0]+c[2])/2);},
+		'blue':	function(labT,c){return c[2]-((c[0]+c[1])/2);}
+		//,'red':function(labT,c){return DeltaE.getDeltaE94(labT,c)},
+		//'green':function(labT,c){return DeltaE.getDeltaE94(labT,c)},
+		//'blue':	function(labT,c){ DeltaE.getDeltaE94(labT,c)}
+};*/
 /*MIDI-LOAD*/
-app.bodyload=function(){app.loadcams();WebMidi.enable(function(err){if(err){console.log("WebMidi could not be enabled.", err);}else{console.log("WebMidi enabled!");
+app.bodyload=function(){app.loadcams();app.T1=document.getElementById('t1');app.T2=document.getElementById('t2');
+	WebMidi.enable(function(err){if(err){console.log("WebMidi could not be enabled.", err);}else{console.log("WebMidi enabled!");
 	var o=0;var ssoo=document.getElementById('sel_outputs');if(WebMidi.outputs.length>0){var oelm;
 		for(o=0;o<WebMidi.outputs.length;o++){oelm=document.createElement('option');
 			oelm.value=WebMidi.outputs[o].id;oelm.innerHTML=WebMidi.outputs[o].name;ssoo.appendChild(oelm);}}
@@ -47,20 +48,29 @@ app.gotDevices=function(deviceInfos){var starters=document.getElementById('start
    if (deviceInfos[i].kind === 'videoinput') {var butt=document.createElement('button');x=x+1;
 	butt.setAttribute('value',x+'^'+deviceInfos[i].deviceId);butt.setAttribute('onclick','app.cambutton(this)');
 	butt.innerHTML=deviceInfos[i].label || 'camera ' + x;starters.insertBefore(butt,document.getElementById('firstVideo'));}
-}};app.handleError=function(error){console.log('navigator.getUserMedia error: ', error);};
+}starters.insertBefore(document.createElement('br'),document.getElementById('firstVideo'));};app.handleError=function(error){console.log('navigator.getUserMedia error: ', error);};
 app.cambutton=function(elm){if(location.protocol!='https:'){alert('...haaa security, you must use https to use camera!');}else{
-	var v=elm.value.split('^');app.setall(2,35)}app.start(v[1],v[0],elm);};
+	var v=elm.value.split('^');app.setall(8,35)}app.start(v[1],v[0],elm);};
 /*PARAM-SETTERS*/
 app.setfps=function(fps){app.fps=fps;if(app.cycle){clearInterval(app.cycle);}app.cycle=setInterval(app.frame,1000/app.fps);
 	/*if(app.scycle){clearInterval(app.scycle);}app.scycle=setInterval(app.clock,Math.floor((1000/app.fps)*4)/24);*/};
 app.setall=function(fps,cutoff,url){app.fps=fps;var e=document.getElementById('fps');e.innerHTML=fps;app.cutoff=cutoff;e=document.getElementById('cutoff');e.innerHTML=cutoff;if(url){app.startv(url);};}
 app.setg1size=function(w,h){app.g1w=w;app.g1h=h;var c=document.getElementById('canvas1');c.setAttribute('width',w);c.setAttribute('height',h);app.setupsize();};
-app.setg2size=function(w,h){app.g2w=w;app.g2h=h;var c=document.getElementById('canvas2');c.setAttribute('width',w);c.setAttribute('height',h);app.setupsize();};
-/*MAPPER*/
+app.setg2size=function(w,h,coarsew,coarseh){app.g2w=w;app.g2h=h;var c=document.getElementById('canvas2');c.setAttribute('width',w);c.setAttribute('height',h);
+/*app.renoteGRID(w,h,coarsew,coarseh);*/app.setupsize();};
+app.setupsize=function(){app.resize();app.refilltable(app.T1,app.g1w,app.g1h);app.refilltable(app.T2,app.GRIDW,app.GRIDH);};
+app.renoteGRID=function(w,h,coarsew,coarseh){if(!coarsew){coarsew=Math.round(w/2)}if(!coarseh){coarseh=Math.round(h/2)}app.noteONGRID=[];app.GRIDW=coarsew;app.GRIDH=coarseh;
+	var hlfW=Math.coarsew/2;var hlfH=coarseh/2;var L;
+	for(r=0;r<coarseh;r++){app.noteONGRID[r]=[];for(var c=0;c<coarsew;c++){
+	app.noteONGRID[r][c]='C3'}}
+};
+app.refilltable=function(T,w,h){var td;var tr;var r=0;var rr=T.getElementsByTagName('tr');for(r=0;r<rr.length;r++){T.removeChild(rr[r])};
+	for(r=0;r<h;r++){tr=document.createElement('tr');for(var c=0;c<w;c++){td=document.createElement('td');tr.appendChild(td);}T.appendChild(tr);}};/*MAPPER*/
 app.mapcc=function(ch,cc){WebMidi.outputs[document.getElementById('sel_outputs').selectedIndex].sendControlChange(101+cc,50,ch);};
 app.mapnote=function(ch){WebMidi.outputs[document.getElementById('sel_outputs').selectedIndex].playNote(75,ch,{duration:500});};	
 
-app.init=function(){app.setg2size(app.g2w,app.g2h);app.video=document.querySelector('video');
+app.init=function(mozjpeg){app.setg2size(app.g2w,app.g2h);if(mozjpeg){app.video=document.querySelector('#videomoz');}else{app.video=document.querySelector('video');}
+	app.video.classList.remove('hidden');
 	var e=document.getElementById('starters');e.style.display='none';document.getElementById('resetB').classList.remove('hidden');
 	app.SSO=WebMidi.outputs[document.getElementById('sel_outputs').selectedIndex];
 	app.SSO=app.SSO||{sendControlChange:function(){var i=0;i=1;},sendClock:function(){var i=0;i=1;},playNote:function(){var i=0;i=1;}};	
@@ -69,13 +79,8 @@ app.init=function(){app.setg2size(app.g2w,app.g2h);app.video=document.querySelec
 app.resize=function(){if(window.innerHeight<window.innerWidth){document.body.classList.remove('bvertical');document.body.classList.add('bhorizontal');}
 	else{document.body.classList.remove('bhorizontal');document.body.classList.add('bvertical');}setTimeout(app._resize,2000)};	
 app._resize=function(){app.T1=document.getElementById('t1');var shh=app.T1.parentNode.offsetHeight;app.T1.style.height=(shh-app.g1h+1)+'px';app.T2=document.getElementById('t2');app.T2.style.height=(shh-app.g1h+1)+'px';};
-app.setupsize=function(){app.resize();
-	app.T1=document.getElementById('t1');app.refilltable(app.T1,app.g1w,app.g1h);
-	app.T2=document.getElementById('t2');app.refilltable(app.T2,app.GRIDW,app.GRIDH);};
-app.refilltable=function(T,w,h){var td;var tr;var r=0;var rr=T.getElementsByTagName('tr');for(r=0;r<rr.length;r++){T.removeChild(rr[r])};
-	for(r=0;r<h;r++){tr=document.createElement('tr');for(var c=0;c<w;c++){td=document.createElement('td');tr.appendChild(td);}T.appendChild(tr);}};
+
 app.start=function(videoSource,num,elm){app.init();var constraints={audio:false,video:{facingMode:'user'}};
-	//if(num=='2'){constraints.video.facingMode='environment';}
 	if(elm.innerHTML.toLowerCase().indexOf('rear')>-1){constraints.video.facingMode='environment';}
 	if(elm.innerHTML.toLowerCase().indexOf('back')>-1){constraints.video.facingMode='environment';}
 	else if(num=='2'){constraints.video.facingMode='environment';}
@@ -83,41 +88,42 @@ app.start=function(videoSource,num,elm){app.init();var constraints={audio:false,
 	function(stream){app.video.srcObject=stream;app.video.onloadedmetadata=function(e){app.video.play();};}).catch(
 	function(err){console.log(err.name + ": " + err.message);});setTimeout(app.startplay,50);};
 app.startv=function(v){app.init();var s=document.createElement('source');video.pause();s.setAttribute('src', v);video.appendChild(s);video.load();video.volume=0;video.play();setTimeout(app.startplay,1000);};
-app.startplay=function(){document.getElementById('antipanel').style.display='';var e=document.getElementById('starters');e.style.display='none';
-	app.setfps(app.fps)};
+app.mozjpeg=function(url){app.init(true);app.video.setAttribute('src',url);
+	setTimeout(app.startplay,1000);}
+app.startplay=function(){document.getElementById('antipanel').style.display='';var e=document.getElementById('starters');e.style.display='none';app.setfps(app.fps)};
 
 app.lastoutBRIGHTEST=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
 app.lastoutDARKEST=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-var vl;app.virtualed=[[],[]];var vvfk={classList:{remove:function(a){a='';}}};
-for(vl=2;vl<7;vl++){app.virtualed[vl]=vvfk};
-for(vl=0;vl<2;vl++){for(var vlx=0;vlx<app.g1h;vlx++){app.virtualed[vl][vlx]=vvfk}};
 var RRR=rgb2lab([255,0,0]);var GGG=rgb2lab([0,255,0]);var BBB=rgb2lab([0,0,255]);var WWW=rgb2lab([255,255,255]);var BLL=rgb2lab([0,0,0]);
 app.notejob={
-	'white':{TT:{L:WWW[0],A:WWW[1],B:WWW[2]},c_est:0,c_a:0,c_x:0,c_y:0,pc_x:0,pc_y:0,tmp:null,chidx:2},
-	'black':{TT:{L:BLL[0],A:BLL[1],B:BLL[2]},c_est:0,c_a:0,c_x:0,c_y:0,pc_x:0,pc_y:0,tmp:null,chidx:3},	
-	'red':{TT:{L:RRR[0],A:RRR[1],B:RRR[2]},c_est:0,c_a:0,c_x:0,c_y:0,pc_x:0,pc_y:0,tmp:null,chidx:4},
-	'green':{TT:{L:GGG[0],A:GGG[1],B:GGG[2]},c_est:0,c_a:0,c_x:0,c_y:0,pc_x:0,pc_y:0,tmp:null,chidx:5},
-	'blue':{TT:{L:BBB[0],A:BBB[1],B:BBB[2]},c_est:0,c_a:0,c_x:0,c_y:0,pc_x:0,pc_y:0,tmp:null,chidx:6},
+	'white':{TT:{L:WWW[0],A:WWW[1],B:WWW[2]},c_est:0,c_a:0,c_x:0,c_y:0,pc_x:0,pc_y:0,tmp:null,CH:1,virtualed:false,ccvirtualed:[]},
+	'black':{TT:{L:BLL[0],A:BLL[1],B:BLL[2]},c_est:0,c_a:0,c_x:0,c_y:0,pc_x:0,pc_y:0,tmp:null,CH:2,virtualed:false,ccvirtualed:[]},	
+	'red':{TT:{L:RRR[0],A:RRR[1],B:RRR[2]},c_est:0,c_a:0,c_x:0,c_y:0,pc_x:0,pc_y:0,tmp:null,CH:3,virtualed:false,ccvirtualed:[]},
+	'green':{TT:{L:GGG[0],A:GGG[1],B:GGG[2]},c_est:0,c_a:0,c_x:0,c_y:0,pc_x:0,pc_y:0,tmp:null,CH:4,virtualed:false,ccvirtualed:[]},
+	'blue':{TT:{L:BBB[0],A:BBB[1],B:BBB[2]},c_est:0,c_a:0,c_x:0,c_y:0,pc_x:0,pc_y:0,tmp:null,CH:5,virtualed:false,ccvirtualed:[]}
 };app.notejobtrick={'red':'','green':'','blue':''};
+app.vvfk={classList:{remove:function(a){a='';}}};
+for(var vl in app.notejob){app.notejob[vl].virtualed=app.vvfk;for(var vlx=0;vlx<app.g1h;vlx++){app.notejob[vl].ccvirtualed[vlx]=app.vvfk}}
 app.clock=function(){app.SSO.sendClock();}
-app.frame=function(){app.context1.drawImage(video, 0, 0, 128, 6);app.context2.drawImage(video, 0, 0, app.g2w, app.g2h);
+app.frame=function(){app.context1.drawImage(app.video, 0, 0, 128, 6);app.context2.drawImage(app.video, 0, 0, app.g2w, app.g2h);
     var dd1 = new Uint8Array(app.context1.getImageData(0, 0,128,6).data.buffer);
     var dd2 = new Uint8Array(app.context2.getImageData(0, 0,app.g2w,app.g2h).data.buffer);
 	var tmp;var maxavg=0;var minavg=0;var c=0;var r=0;var rx;var cx;
 	var maxavgx=0;var minavgx=255;	
 	for(r=0;r<app.g1h;r++){rx=r*128*4;maxavg=0;minavg=255;
 		for(c=0;c<128;c++){cx=rx+(c*4);tmp=(dd1[cx]+dd1[cx+1]+dd1[cx+2])/3;if(tmp>maxavg){maxavg=tmp;maxavgx=c};if(tmp<minavg){minavg=tmp;minavgx=c};}
-		app.virtualed[0][r].classList.remove('ccwhite');app.virtualed[1][r].classList.remove('ccblack');
+		app.notejob['white'].ccvirtualed[r].classList.remove('ccwhite');
+		app.notejob['black'].ccvirtualed[r].classList.remove('ccblack');
 		tmp=Math.floor(Math.abs(maxavgx));if(tmp!=app.lastoutBRIGHTEST[r]){
-				if(app.tween1){tmp=app.lastoutBRIGHTEST[r]+Math.round(((tmp-app.lastoutBRIGHTEST[r])/3));}
+				if(app.tween1){tmp=app.lastoutBRIGHTEST[r]+Math.round(((tmp-app.lastoutBRIGHTEST[r])/2.5));}
 			app.lastoutBRIGHTEST[r]=tmp;app.SSO.sendControlChange(r+102,tmp,1);
-			app.virtualed[0][r]=app.T1.getElementsByTagName('tr')[r].getElementsByTagName('td')[tmp];app.virtualed[0][r].classList.add('ccwhite');}		
+			app.notejob['white'].ccvirtualed[r]=app.T1.getElementsByTagName('tr')[r].getElementsByTagName('td')[tmp];app.notejob['white'].ccvirtualed[r].classList.add('ccwhite');}		
 		tmp=Math.floor(Math.abs(minavgx));if(tmp!=app.lastoutDARKEST[r]){
-				if(app.tween1){tmp=app.lastoutDARKEST[r]+Math.round(((tmp-app.lastoutDARKEST[r])/3));}
+				if(app.tween1){tmp=app.lastoutDARKEST[r]+Math.round(((tmp-app.lastoutDARKEST[r])/2.5));}
 			app.lastoutDARKEST[r]=tmp;app.SSO.sendControlChange(r+102,tmp,2);
-			app.virtualed[1][r]=app.T1.getElementsByTagName('tr')[r].getElementsByTagName('td')[tmp];app.virtualed[1][r].classList.add('ccblack');}
+			app.notejob['black'].ccvirtualed[r]=app.T1.getElementsByTagName('tr')[r].getElementsByTagName('td')[tmp];app.notejob['black'].ccvirtualed[r].classList.add('ccblack');}
 	}	
-	var ctemp=[];var CHIDX;var X;var Y;var wk=(app.GRIDW-1)/app.g2w;var hk=(app.GRIDH-1)/app.g2h;	
+	var ctemp=[];var X;var Y;
 	for(var xCol in app.notejob){app.notejob[xCol].c_est=99999999999999;app.notejob[xCol].c_a=0;}app.notejob['white'].c_est=0;
 	for(r=0;r<app.g2w;r++){rx=r*app.g2w*4;maxavg=0;minavg=255;
 		for(c=0;c<app.g2h;c++){cx=rx+(c*4);tmp=(dd2[cx]+dd2[cx+1]+dd2[cx+2])/3;
@@ -126,38 +132,30 @@ app.frame=function(){app.context1.drawImage(video, 0, 0, 128, 6);app.context2.dr
 			ctemp=rgb2lab([dd2[cx],dd2[cx+1],dd2[cx+2]]);
 			for(var xCol in app.notejobtrick){
 				app.notejob[xCol].tmp=DeltaE.getDeltaE94(app.notejob[xCol].TT,{L:ctemp[0],A:ctemp[1],B:ctemp[2]});
+				//app.notejob[xCol].tmp=app.dE[xCol](app.notejob[xCol].TT,ctemp);
 				if(app.notejob[xCol].tmp<app.notejob[xCol].c_est){app.notejob[xCol].c_est=app.notejob[xCol].tmp;
 					app.notejob[xCol].c_x=c;app.notejob[xCol].c_y=r;app.notejob[xCol].c_a=tmp;}
 	}	}	}
 	/*ADAPT TO TONE GRID*/
-	for(var xCol in app.notejob){app.virtualed[app.notejob[xCol].chidx].classList.remove(xCol);
+	var wk=(app.GRIDW-1)/app.g2w;var hk=(app.GRIDH-1)/app.g2h;	
+	for(var xCol in app.notejob){app.notejob[xCol].virtualed.classList.remove(xCol);
 		app.notejob[xCol].c_x=Math.round(app.notejob[xCol].c_x*wk);app.notejob[xCol].c_y=Math.round(app.notejob[xCol].c_y*hk);}
 	/*PLAY*/
-	if(!app.rp){CHIDX=app.notejob['white'].chidx;X=app.notejob['white'].c_x;Y=app.notejob['white'].c_y;
-		if(!((app.notejob['white'].pc_x==X)&&(app.notejob['white'].pc_y==Y))){app.notejob['white'].pc_x=X;app.notejob['white'].pc_y=Y;
-			if(app.notejob['white'].c_est>app.cutoff){app.SSO.playNote(app.noteONGRID[Y][X],CHIDX+1,{duration:500});			
-			app.virtualed[CHIDX]=app.T2.getElementsByTagName('tr')[Y].getElementsByTagName('td')[X];app.virtualed[CHIDX].classList.add('white');}}
-		CHIDX=app.notejob['black'].chidx;X=app.notejob['black'].c_x;Y=app.notejob['black'].c_y;
-		if(!((app.notejob['black'].pc_x==X)&&(app.notejob['black'].pc_y==Y))){app.notejob['black'].pc_x=X;app.notejob['black'].pc_y=Y;
-			if(app.notejob['black'].c_est<((255*3)-app.cutoff)){app.SSO.playNote(app.noteONGRID[Y][X],CHIDX+1,{duration:500});			
-			app.virtualed[CHIDX]=app.T2.getElementsByTagName('tr')[Y].getElementsByTagName('td')[X];app.virtualed[CHIDX].classList.add('black');}}
-		for(var xCol in app.notejobtrick){CHIDX=app.notejob[xCol].chidx;X=app.notejob[xCol].c_x;Y=app.notejob[xCol].c_y;
-			if(!((app.notejob[xCol].pc_x==X)&&(app.notejob[xCol].pc_y==Y))){app.notejob[xCol].pc_x=X;app.notejob[xCol].pc_y=Y;
-				if(app.notejob[xCol].c_est<app.deltaE){if(app.notejob[xCol].c_a>app.cutoff){app.SSO.playNote(app.noteONGRID[Y][X],CHIDX+1,{duration:500});
-				app.virtualed[CHIDX]=app.T2.getElementsByTagName('tr')[Y].getElementsByTagName('td')[X];app.virtualed[CHIDX].classList.add(xCol)}}}
-		}			
-	}else{CHIDX=app.notejob['white'].chidx;X=app.notejob['white'].c_x;Y=app.notejob['white'].c_y;
-		if(app.notejob['white'].c_est>app.cutoff){app.SSO.playNote(app.noteONGRID[Y][X],CHIDX+1,{duration:500});			
-			app.virtualed[CHIDX]=app.T2.getElementsByTagName('tr')[Y].getElementsByTagName('td')[X];app.virtualed[CHIDX].classList.add('white');}
-		CHIDX=app.notejob['black'].chidx;X=app.notejob['black'].c_x;Y=app.notejob['black'].c_y;
-		if(app.notejob['black'].c_est<(255-app.cutoff)){app.SSO.playNote(app.noteONGRID[Y][X],CHIDX+1,{duration:500});			
-			app.virtualed[CHIDX]=app.T2.getElementsByTagName('tr')[Y].getElementsByTagName('td')[X];app.virtualed[CHIDX].classList.add('black');}
-		for(var xCol in app.notejobtrick){CHIDX=app.notejob[xCol].chidx;X=app.notejob[xCol].c_x;Y=app.notejob[xCol].c_y;
-			if(app.notejob[xCol].c_est<app.deltaE){app.SSO.playNote(app.noteONGRID[Y][X],CHIDX+1,{duration:500});
-			app.virtualed[CHIDX]=app.T2.getElementsByTagName('tr')[Y].getElementsByTagName('td')[X];app.virtualed[CHIDX].classList.add(xCol)}
-		}
+	if(!app.rp){
+		if(app.notejob['white'].c_est>app.cutoff){app.notejob['white'].virtualed=app.check_playnote_getled('white');}		
+		if(app.notejob['black'].c_est<((255*3)-app.cutoff)){app.notejob['black'].virtualed=app.check_playnote_getled('black');}		
+		for(var xCol in app.notejobtrick){if(app.notejob[xCol].c_est<app.deltaE){
+			if(app.notejob[xCol].c_a>app.cutoff){app.notejob[xCol].virtualed=app.check_playnote_getled(xCol);}}}			
+	}else{
+		if(app.notejob['white'].c_est>app.cutoff){app.notejob['white'].virtualed=app.playnote_getled('white');}		
+		if(app.notejob['black'].c_est<((255*3)-app.cutoff)){app.notejob['black'].virtualed=app.playnote_getled('black');}
+		for(var xCol in app.notejobtrick){if(app.notejob[xCol].c_est<app.deltaE){app.notejob[xCol].virtualed=app.playnote_getled(xCol);}}
 	}
 };
+app.playnote_getled=function(xCol){var J=app.notejob[xCol];app.SSO.playNote(app.noteONGRID[J.c_y][J.c_x],J.CH,{duration:500});
+	J=app.T2.getElementsByTagName('tr')[J.c_y].getElementsByTagName('td')[J.c_x];J.classList.add(xCol);return J;};
+app.check_playnote_getled=function(xCol){var J=app.notejob[xCol];
+	if(!((J.pc_x==J.c_x)&&(J.pc_y==J.c_y))){app.notejob[xCol].pc_x=J.c_x;app.notejob[xCol].pc_y=J.c_y;return app.playnote_getled(xCol);}else{return app.vvfk}};
 </script><style>html{width:100%;}body{background-color:black;color:#dddddd;width:100%;margin:0;padding:0;text-align:center;}*{font-family:arial}
 #antipanel{position:absolute;z-index:0;top:55px;}
 .bhorizontal #antipanel{width:60%;left:20%;margin-top:55px;vertical-align:top;}
@@ -185,13 +183,13 @@ tr,td{border-collapse:collapse;}
 <div style="width:100%;text-align:center;position:absolute;z-index:1">
 <div id="starters" style="display:inline-block;margin-top:5%">
 	MIDI OUT:<select id="sel_outputs"></select> <button onclick="document.getElementById('mapper_div').classList.toggle('hidden');document.getElementById('chartButt').classList.toggle('hidden')">TOGGLE MAPPER</button> <button id="chartButt" class="a b hidden" onclick="document.getElementById('chart_img').classList.toggle('hidden')">VIEW NOTEON-CHART</button><br/>
-<button onclick="app.setall(4,60,'moviex.mov');" id="firstVideo" >VIDEO1</button><button
-	onclick="app.setall(4,80,'a.mp4');">VIDEO2</button><button onclick="app.setall(4,135,'b.mp4');">VIDEO3
-</button><button onclick="app.setall(4,50,'d.mp4');">VIDEO4</button><button onclick="app.setall(4,50,'2019A.mp4');">VIDEO 2019A
-</button><button onclick="app.setall(4,50,'2019B.mp4');">VIDEO 2019B</button><button onclick="app.setall(4,50,'2019C.mp4');">VIDEO 2019C
-</button><br/><button onclick="app.setall(4,50,'FLORA1.mp4');">FLORA 1</button><button onclick="app.setall(4,50,'FLORA2.mp4');">FLORA 2
-</button><button onclick="app.setall(4,50,'FLORA3.mp4');">FLORA 3</button><button onclick="app.setall(4,50,'FLORA4.mp4');">FLORA 4
-</button><div id="mapper_div" style="text-align:left;width:90%;margin-left:5%;inline-block;" class="a b hidden">
+<button onclick="app.setall(8,60,'moviex.mov');" id="firstVideo" >VIDEO1</button><button
+	onclick="app.setall(8,80,'a.mp4');">VIDEO2</button><button onclick="app.setall(8,135,'b.mp4');">VIDEO3
+</button><button onclick="app.setall(8,50,'d.mp4');">VIDEO4</button><button onclick="app.setall(8,50,'2019A.mp4');">VIDEO 2019A
+</button><button onclick="app.setall(8,50,'2019B.mp4');">VIDEO 2019B</button><button onclick="app.setall(8,50,'2019C.mp4');">VIDEO 2019C
+</button><br/><button onclick="app.setall(8,50,'FLORA1.mp4');">FLORA 1</button><button onclick="app.setall(8,50,'FLORA2.mp4');">FLORA 2
+</button><button onclick="app.setall(8,50,'FLORA3.mp4');">FLORA 3</button><button onclick="app.setall(8,50,'FLORA4.mp4');">FLORA 4
+</button><br/><input type="text" value="http://192.168.2.25:8080/video" placeholder="mozjpeg stream url"/><button onclick="app.setall(4,80);app.mozjpeg(this.previousSibling.value);">IPCAM/MOZJPEG</button><div id="mapper_div" style="text-align:left;width:90%;margin-left:5%;inline-block;" class="a b hidden">
 		The following are control change messages, the video is read in 6 lines and 128 columns[0-127 from left to right]:<ul>
 		  <li>Brightest per line(channel 1, cc102-119)<br/>
 <button onclick="app.mapcc(1,1)">C1-102</button><button onclick="app.mapcc(1,2)">C1-103</button><button onclick="app.mapcc(1,3)">C1-104</button><button
@@ -200,16 +198,15 @@ tr,td{border-collapse:collapse;}
 <button onclick="app.mapcc(2,1)">C2-102</button><button onclick="app.mapcc(2,2)">C2-103</button><button onclick="app.mapcc(2,3)">C2-104</button><button
  onclick="app.mapcc(2,4)">C2-105</button><button onclick="app.mapcc(2,5)">C2-106</button><button onclick="app.mapcc(2,6)">C2-107</button>
 		</li></ul><br/>
-		The following are for note-on messages, the video is read in 13 x 13 columns the center being the highest[C6]:<br/><ul style="display:inline-block">
-			<li>Brightest of all(channel 3, noteon) <button onclick="app.mapnote(3)">C3-NOTEON</button></li>
-			<li>Darkest of all(channel 4, noteon) <button onclick="app.mapnote(4)">C4-NOTEON</button></li>
-			<li>Reddested of all(channel 5, noteon) <button onclick="app.mapnote(5)">C5-NOTEON</button></li>
-			<li>Greenest of all(channel 6, noteon) <button onclick="app.mapnote(6)">C6-NOTEON</button></li>
-			<li>Most Blue of all(channel 7, noteon) <button onclick="app.mapnote(7)">C7-NOTEON</button></li></ul>
+		The following are for note-on messages, the center being the highest[C6]:<br/><ul style="display:inline-block">
+			<li>Brightest of all(channel 1, noteon) <button onclick="app.mapnote(3)">C1-NOTEON</button></li>
+			<li>Darkest of all(channel 2, noteon) <button onclick="app.mapnote(4)">C2-NOTEON</button></li>
+			<li>Reddest of all(channel 3, noteon) <button onclick="app.mapnote(5)">C3-NOTEON</button></li>
+			<li>Greenest of all(channel 4, noteon) <button onclick="app.mapnote(6)">C4-NOTEON</button></li>
+			<li>Most Blue of all(channel 5, noteon) <button onclick="app.mapnote(7)">C5-NOTEON</button></li></ul>
 			<img id="chart_img" src="chart.png" class="a b hidden" />
-	</div>
-</div></div>
-<div id="antipanel" style="display:none"><div id="main" style="width:100%;"><div id="videowrap"><video id="video" style="width:100%;"></video><table
+</div></div></div>
+<div id="antipanel" style="display:none"><div id="main" style="width:100%;"><div id="videowrap"><video id="video" style="width:100%;" class="hidden"></video><img id="videomoz" style="width:100%;" class="hidden"></video><table
  id="t1" class=" "></table><table id="t2" class=" "></table></div><div id="controlsDX">
 <button onclick="app.rp=!app.rp;this.classList.toggle('toggled')" class="big">Retrigger</button><button onclick="app.tween1=!app.tween1;this.classList.toggle('toggled')" class="toggled big">Tween1</button><br/>
 <button onclick="document.getElementById('t2').classList.toggle('hidden');this.classList.toggle('toggled')" class="toggled big">NOTES</button><button
@@ -219,7 +216,7 @@ tr,td{border-collapse:collapse;}
 <span>fps</span><button onclick="var e=document.getElementById('fps');var v=parseInt(e.innerHTML)-1;if(v<0){v=0};e.innerHTML=v;app.setfps(v)">-</button><button
  onclick="var e=document.getElementById('fps');var v=parseInt(e.innerHTML)+1;if(v>100){v=100};e.innerHTML=v;app.setfps(v);">+</button><span id="fps" class="toggled">4</span><br/>
 <span>&#916;e</span><button onclick="var e=document.getElementById('DeltaE');var v=parseInt(e.innerHTML)-5;if(v<0){v=0};e.innerHTML=v;app.deltaE=(v)">-</button><button
- onclick="var e=document.getElementById('DeltaE');var v=parseInt(e.innerHTML)+5;if(v>200){v=200};e.innerHTML=v;app.deltaE=(v);">+</button><span id="DeltaE" class="toggled">40</span>
+ onclick="var e=document.getElementById('DeltaE');var v=parseInt(e.innerHTML)+5;if(v>200){v=200};e.innerHTML=v;app.deltaE=(v);">+</button><span id="DeltaE" class="toggled">50</span>
 </div></div></div>
-<canvas id="canvas1" width="128" height="6" style=";display:none;zoom:10;image-rendering:pixelated;transform: scaleX(0.25);transform-origin: 0;"></canvas>
-<canvas	id="canvas2" width="13" height="13" style="zoom:10;image-rendering:pixelated;display:none" ></canvas></body></html>
+<canvas id="canvas1" width="128" height="6" style="zoom:10;display:none;image-rendering:pixelated;transform: scaleX(0.25);transform-origin: 0;"></canvas>
+<canvas	id="canvas2" width="13" height="13" style="zoom:5;image-rendering:pixelated;display:none" ></canvas></body></html>
